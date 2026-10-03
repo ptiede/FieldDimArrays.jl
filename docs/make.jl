@@ -1,14 +1,14 @@
-using PseudoStructArrays
+using ViewStructArrays
 using Documenter
 
-DocMeta.setdocmeta!(PseudoStructArrays, :DocTestSetup, :(using PseudoStructArrays); recursive = true)
+DocMeta.setdocmeta!(ViewStructArrays, :DocTestSetup, :(using ViewStructArrays); recursive = true)
 
 makedocs(;
-    modules = [PseudoStructArrays],
+    modules = [ViewStructArrays],
     authors = "Paul Tiede <ptiede91@gmail.com> and contributors",
-    sitename = "PseudoStructArrays.jl",
+    sitename = "ViewStructArrays.jl",
     format = Documenter.HTML(;
-        canonical = "https://ptiede.github.io/PseudoStructArrays.jl",
+        canonical = "https://ptiede.github.io/ViewStructArrays.jl",
         edit_link = "main",
         assets = String[],
     ),
@@ -18,6 +18,6 @@ makedocs(;
 )
 
 deploydocs(;
-    repo = "github.com/ptiede/PseudoStructArrays.jl",
+    repo = "github.com/ptiede/ViewStructArrays.jl",
     devbranch = "main",
 )

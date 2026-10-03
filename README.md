@@ -1,6 +1,38 @@
-# PseudoStructArrays
+# ViewStructArrays
 
-[![Stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://ptiede.github.io/PseudoStructArrays.jl/stable/)
-[![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://ptiede.github.io/PseudoStructArrays.jl/dev/)
-[![Build Status](https://github.com/ptiede/PseudoStructArrays.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/ptiede/PseudoStructArrays.jl/actions/workflows/CI.yml?query=branch%3Amain)
-[![Coverage](https://codecov.io/gh/ptiede/PseudoStructArrays.jl/branch/main/graph/badge.svg)](https://codecov.io/gh/ptiede/PseudoStructArrays.jl)
+[![Stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://ptiede.github.io/ViewStructArrays.jl/stable/)
+[![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://ptiede.github.io/ViewStructArrays.jl/dev/)
+[![Build Status](https://github.com/ptiede/ViewStructArrays.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/ptiede/ViewStructArrays.jl/actions/workflows/CI.yml?query=branch%3Amain)
+[![Coverage](https://codecov.io/gh/ptiede/ViewStructArrays.jl/branch/main/graph/badge.svg)](https://codecov.io/gh/ptiede/ViewStructArrays.jl)
+
+`ViewStructArray{T}(parent)` presents a dense array `parent` as an array of elements of type
+`T`. The leading dims of `parent` index the elements and its trailing dims hold their
+components, so the storage stays one ordinary array (an `Array`, a GPU array, or a traced
+Reactant array) while code reads and writes whole elements.
+
+Element types are structs whose fields all have type `eltype(parent)` and, with StaticArrays
+loaded, static arrays such as `SVector`, `SMatrix` and `FieldVector` subtypes. A 2×2 `SMatrix`
+element uses two trailing dims of size 2 in column-major order.
+
+```julia
+using ViewStructArrays, StaticArrays
+
+struct Point{T}
+    x::T
+    y::T
+end
+
+data = rand(100, 2)
+a = ViewStructArray{Point}(data)   # 100-element array of Point{Float64}
+a[3]                               # Point(data[3, 1], data[3, 2])
+a.x                                # view(data, :, 1)
+b = (p -> Point(p.y, -p.x)).(a)    # new ViewStructArray over a new 100×2 array
+parent(b)                          # the dense storage
+
+m = ViewStructArray{SMatrix{2, 2}}(rand(100, 2, 2))
+m .* m .* adjoint.(m)              # ViewStructArray over a new 100×2×2 array
+```
+
+Broadcasts on the CPU make one pass over the elements. Broadcasts over traced Reactant arrays
+run one broadcast per component over the component slabs and join the results with `cat`, so
+the compiled program contains no loop over elements and keeps sharded dims split.

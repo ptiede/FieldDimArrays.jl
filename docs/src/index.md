@@ -1,14 +1,14 @@
 ```@meta
-CurrentModule = PseudoStructArrays
+CurrentModule = ViewStructArrays
 ```
 
-# PseudoStructArrays
+# ViewStructArrays
 
-Documentation for [PseudoStructArrays](https://github.com/ptiede/PseudoStructArrays.jl).
+Documentation for [ViewStructArrays](https://github.com/ptiede/ViewStructArrays.jl).
 
 ```@index
 ```
 
 ```@autodocs
-Modules = [PseudoStructArrays]
+Modules = [ViewStructArrays]
 ```
