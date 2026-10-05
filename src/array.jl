@@ -88,37 +88,48 @@ Base.size(a::ViewStructArray{T, N}) where {T, N} = ntuple(d -> size(parent(a), d
 Base.axes(a::ViewStructArray{T, N}) where {T, N} = ntuple(d -> axes(parent(a), d), Val(N))
 Base.IndexStyle(::Type{<:ViewStructArray{T, N, A}}) where {T, N, A} = IndexStyle(A)
 
+function _checkcartesian(a::ViewStructArray{T}, I) where {T}
+    checkbounds(a, I...)
+    checkbounds(parent(a), I..., _fieldindex(a, ncomponents(T))...)
+    return nothing
+end
+
+function _checklinear(a::ViewStructArray{T}, i) where {T}
+    checkbounds(a, i)
+    checkbounds(parent(a), i + (ncomponents(T) - 1) * length(a))
+    return nothing
+end
+
+# Component accesses are unrolled so element loops vectorize. `@inbounds` does not reach into
+# the `ntuple` closures, so each access carries its own; the `@boundscheck` block guards them by
+# checking the element index and the parent index of the element's last component.
 Base.@propagate_inbounds function Base.getindex(a::ViewStructArray{T, N}, I::Vararg{Int, N}) where {T, N}
-    @boundscheck checkbounds(a, I...)
+    @boundscheck _checkcartesian(a, I)
     p = parent(a)
-    return fromcomponents(T, ntuple(k -> p[I..., _fieldindex(a, k)...], Val(ncomponents(T))))
+    return fromcomponents(T, ntuple(k -> @inbounds(p[I..., _fieldindex(a, k)...]), Val(ncomponents(T))))
 end
 
 Base.@propagate_inbounds function Base.getindex(a::ViewStructArray{T}, i::Int) where {T}
-    @boundscheck checkbounds(a, i)
+    @boundscheck _checklinear(a, i)
     p = parent(a)
     n = length(a)
-    return fromcomponents(T, ntuple(k -> p[i + (k - 1) * n], Val(ncomponents(T))))
+    return fromcomponents(T, ntuple(k -> @inbounds(p[i + (k - 1) * n]), Val(ncomponents(T))))
 end
 
 Base.@propagate_inbounds function Base.setindex!(a::ViewStructArray{T, N}, v, I::Vararg{Int, N}) where {T, N}
-    @boundscheck checkbounds(a, I...)
+    @boundscheck _checkcartesian(a, I)
     p = parent(a)
     c = components(convert(T, v))
-    for k in eachindex(c)
-        p[I..., _fieldindex(a, k)...] = c[k]
-    end
+    ntuple(k -> @inbounds(p[I..., _fieldindex(a, k)...] = c[k]), Val(ncomponents(T)))
     return a
 end
 
 Base.@propagate_inbounds function Base.setindex!(a::ViewStructArray{T}, v, i::Int) where {T}
-    @boundscheck checkbounds(a, i)
+    @boundscheck _checklinear(a, i)
     p = parent(a)
     n = length(a)
     c = components(convert(T, v))
-    for k in eachindex(c)
-        p[i + (k - 1) * n] = c[k]
-    end
+    ntuple(k -> @inbounds(p[i + (k - 1) * n] = c[k]), Val(ncomponents(T)))
     return a
 end
 

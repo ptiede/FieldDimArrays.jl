@@ -91,6 +91,20 @@ end
     v[1] = Point3D(100.0, 200.0, 300.0)
     @test parent(v)[1, :] == [100.0, 200.0, 300.0]
 
+    a[3, 4] = Point2D(7.0, 8.0)
+    @test data[3, 4, 1] == 7.0 && data[3, 4, 2] == 8.0
+    a[12] = Point2D(9.0, 10.0)
+    @test data[3, 4, 1] == 9.0 && data[3, 4, 2] == 10.0
+    @test_throws BoundsError (a[13] = Point2D(0.0, 0.0))
+    @test_throws BoundsError (a[4, 1] = Point2D(0.0, 0.0))
+
+    # A parent shrunk after construction no longer holds every component.
+    w = ViewStructArray{Point3D, 0}(collect(1.0:3.0))
+    @test w[] == Point3D(1.0, 2.0, 3.0)
+    resize!(parent(w), 2)
+    @test_throws BoundsError w[]
+    @test_throws BoundsError (w[] = Point3D(0.0, 0.0, 0.0))
+
     @test_throws BoundsError v[0]
     @test_throws BoundsError v[5]
     @test_throws BoundsError a[4, 1]
