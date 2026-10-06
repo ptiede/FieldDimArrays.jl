@@ -100,9 +100,7 @@ function _checklinear(a::ViewStructArray{T}, i) where {T}
     return nothing
 end
 
-# Component accesses are unrolled so element loops vectorize. `@inbounds` does not reach into
-# the `ntuple` closures, so each access carries its own; the `@boundscheck` block guards them by
-# checking the element index and the parent index of the element's last component.
+# `@inbounds` does not reach into the `ntuple` closures; `@boundscheck` covers each access.
 Base.@propagate_inbounds function Base.getindex(a::ViewStructArray{T, N}, I::Vararg{Int, N}) where {T, N}
     @boundscheck _checkcartesian(a, I)
     p = parent(a)
