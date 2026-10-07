@@ -25,6 +25,7 @@ function stokes_loss_gradient(P)
 end
 
 shifted_fft(a) = fftshift(fft(a))
+phase_scaled(a, x) = @. a * cospi(x * x')
 ifft_into!(a) = (ifft!(a); a)
 
 hlo_text(f, args...) = repr(Reactant.@code_hlo f(args...))
@@ -87,6 +88,14 @@ result_slices(a) = parent(a).sharding.device_to_array_slices
         @test !has_while(hlo_text(stokes_into!, d, ar))
         @test !has_while(hlo_text(sandwich, Ar, Xr, Br))
         @test !has_while(hlo_text(sandwich_into!, D, Ar, Xr, Br))
+    end
+
+    @testset "subtrees without a FieldDimArray are evaluated once" begin
+        x = range(-1.0, 1.0; length = 8)
+        a = FieldDimArray{Stokes}(rand(8, 8, 4))
+        ar = Reactant.to_rarray(a)
+        @test Array(parent(@jit(phase_scaled(ar, x)))) ≈ parent(phase_scaled(a, x))
+        @test !occursin("stablehlo.cosine", hlo_text(phase_scaled, ar, x))
     end
 
     @testset "FFTs" begin

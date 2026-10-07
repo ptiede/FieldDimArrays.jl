@@ -107,8 +107,13 @@ _leaves(x) = (x,)
 _flatleaves(args::Tuple{}) = ()
 _flatleaves(args::Tuple) = (_leaves(first(args))..., _flatleaves(Base.tail(args))...)
 
+# Subtrees without a `FieldDimArray` are the same for every component and are evaluated once.
+_hoist(bc::Broadcast.Broadcasted) = Broadcast.Broadcasted(bc.style, bc.f, map(_hoistarg, bc.args), bc.axes)
+_hoistarg(x::Broadcast.Broadcasted) = _template(x) === nothing ? Broadcast.materialize(x) : _hoist(x)
+_hoistarg(x) = x
+
 function _componentwise(bc::Broadcast.Broadcasted)
-    fl = Broadcast.flatten(bc)
+    fl = Broadcast.flatten(_hoist(bc))
     return Regroup{map(_layout, fl.args)}(fl.f), _flatleaves(fl.args)
 end
 
