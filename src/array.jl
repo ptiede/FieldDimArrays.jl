@@ -1,6 +1,6 @@
 """
-    ViewStructArray{T}(parent)
-    ViewStructArray{T, N}(parent)
+    FieldDimArray{T}(parent)
+    FieldDimArray{T, N}(parent)
 
 An `AbstractArray{T, N}` whose elements are read from and written to the dense array
 `parent`: the leading `N` dims of `parent` index the elements and its trailing dims index
@@ -10,7 +10,7 @@ parent becomes `Point{Float64}`).
 
 The trailing dims of `parent` are either `fieldshape(T)` (one dim of length `ncomponents(T)`
 for a struct, `(2, 2)` for a 2×2 static matrix) or a single dim of length `ncomponents(T)`.
-`ViewStructArray{T}(parent)` uses `fieldshape(T)`; giving `N` selects the layout from
+`FieldDimArray{T}(parent)` uses `fieldshape(T)`; giving `N` selects the layout from
 `ndims(parent) - N`.
 
 `parent(a)` returns the dense storage, [`fieldview`](@ref) and `getproperty` return the
@@ -23,7 +23,7 @@ julia> struct Point{T}
            y::T
        end
 
-julia> a = ViewStructArray{Point}([1.0 3.0; 2.0 4.0]);
+julia> a = FieldDimArray{Point}([1.0 3.0; 2.0 4.0]);
 
 julia> a[2]
 Point{Float64}(2.0, 4.0)
@@ -34,25 +34,25 @@ julia> a.y
  4.0
 ```
 """
-struct ViewStructArray{T, N, A <: AbstractArray} <: AbstractArray{T, N}
+struct FieldDimArray{T, N, A <: AbstractArray} <: AbstractArray{T, N}
     parent::A
-    function ViewStructArray{T, N, A}(parent) where {T, N, A}
+    function FieldDimArray{T, N, A}(parent) where {T, N, A}
         _checkparent(T, Val(N), parent)
         return new{T, N, A}(parent)
     end
 end
 
-function ViewStructArray{T, N}(parent::AbstractArray) where {T, N}
+function FieldDimArray{T, N}(parent::AbstractArray) where {T, N}
     T2 = _concrete(T, eltype(parent))
-    return ViewStructArray{T2, N, typeof(parent)}(parent)
+    return FieldDimArray{T2, N, typeof(parent)}(parent)
 end
 
-function ViewStructArray{T}(parent::AbstractArray) where {T}
+function FieldDimArray{T}(parent::AbstractArray) where {T}
     T2 = _concrete(T, eltype(parent))
     L = length(fieldshape(T2))
     ndims(parent) >= L ||
         throw(DimensionMismatch("a parent of $T2 elements needs at least $L dims for the components (trailing size $(fieldshape(T2))); got $(ndims(parent))"))
-    return ViewStructArray{T2, ndims(parent) - L}(parent)
+    return FieldDimArray{T2, ndims(parent) - L}(parent)
 end
 
 function _checkparent(::Type{T}, ::Val{N}, parent) where {T, N}
@@ -64,7 +64,7 @@ function _checkparent(::Type{T}, ::Val{N}, parent) where {T, N}
     shape = fieldshape(T)
     L = ndims(parent) - N
     (L == length(shape) || L == 1) ||
-        throw(DimensionMismatch("a ViewStructArray{$T, $N} needs a parent with $(N + length(shape)) dims (trailing size $shape) or $(N + 1) dims (trailing size ($(ncomponents(T)),)); got $(ndims(parent)) dims"))
+        throw(DimensionMismatch("a FieldDimArray{$T, $N} needs a parent with $(N + length(shape)) dims (trailing size $shape) or $(N + 1) dims (trailing size ($(ncomponents(T)),)); got $(ndims(parent)) dims"))
     trailing = ntuple(i -> size(parent, N + i), Val(L))
     expected = _layoutshape(T, Val(L))
     trailing == expected ||
@@ -75,46 +75,46 @@ end
 
 _layoutshape(::Type{T}, ::Val{L}) where {T, L} = L == length(fieldshape(T)) ? fieldshape(T) : (ncomponents(T),)
 
-_nfielddims(::Type{<:ViewStructArray{T, N, A}}) where {T, N, A} = ndims(A) - N
-_fielddims(::Type{V}) where {V <: ViewStructArray} = _layoutshape(eltype(V), Val(_nfielddims(V)))
-_fielddims(a::ViewStructArray) = _fielddims(typeof(a))
+_nfielddims(::Type{<:FieldDimArray{T, N, A}}) where {T, N, A} = ndims(A) - N
+_fielddims(::Type{V}) where {V <: FieldDimArray} = _layoutshape(eltype(V), Val(_nfielddims(V)))
+_fielddims(a::FieldDimArray) = _fielddims(typeof(a))
 
-_fieldindex(a::ViewStructArray, k::Int) = Tuple(CartesianIndices(_fielddims(a))[k])
+_fieldindex(a::FieldDimArray, k::Int) = Tuple(CartesianIndices(_fielddims(a))[k])
 _colons(::Val{N}) where {N} = ntuple(_ -> Colon(), Val(N))
 
-Base.parent(a::ViewStructArray) = getfield(a, :parent)
+Base.parent(a::FieldDimArray) = getfield(a, :parent)
 
-Base.size(a::ViewStructArray{T, N}) where {T, N} = ntuple(d -> size(parent(a), d), Val(N))
-Base.axes(a::ViewStructArray{T, N}) where {T, N} = ntuple(d -> axes(parent(a), d), Val(N))
-Base.IndexStyle(::Type{<:ViewStructArray{T, N, A}}) where {T, N, A} = IndexStyle(A)
+Base.size(a::FieldDimArray{T, N}) where {T, N} = ntuple(d -> size(parent(a), d), Val(N))
+Base.axes(a::FieldDimArray{T, N}) where {T, N} = ntuple(d -> axes(parent(a), d), Val(N))
+Base.IndexStyle(::Type{<:FieldDimArray{T, N, A}}) where {T, N, A} = IndexStyle(A)
 
-function _checkcartesian(a::ViewStructArray{T}, I) where {T}
+function _checkcartesian(a::FieldDimArray{T}, I) where {T}
     checkbounds(a, I...)
     checkbounds(parent(a), I..., _fieldindex(a, ncomponents(T))...)
     return nothing
 end
 
-function _checklinear(a::ViewStructArray{T}, i) where {T}
+function _checklinear(a::FieldDimArray{T}, i) where {T}
     checkbounds(a, i)
     checkbounds(parent(a), i + (ncomponents(T) - 1) * length(a))
     return nothing
 end
 
 # `@inbounds` does not reach into the `ntuple` closures; `@boundscheck` covers each access.
-Base.@propagate_inbounds function Base.getindex(a::ViewStructArray{T, N}, I::Vararg{Int, N}) where {T, N}
+Base.@propagate_inbounds function Base.getindex(a::FieldDimArray{T, N}, I::Vararg{Int, N}) where {T, N}
     @boundscheck _checkcartesian(a, I)
     p = parent(a)
     return fromcomponents(T, ntuple(k -> @inbounds(p[I..., _fieldindex(a, k)...]), Val(ncomponents(T))))
 end
 
-Base.@propagate_inbounds function Base.getindex(a::ViewStructArray{T}, i::Int) where {T}
+Base.@propagate_inbounds function Base.getindex(a::FieldDimArray{T}, i::Int) where {T}
     @boundscheck _checklinear(a, i)
     p = parent(a)
     n = length(a)
     return fromcomponents(T, ntuple(k -> @inbounds(p[i + (k - 1) * n]), Val(ncomponents(T))))
 end
 
-Base.@propagate_inbounds function Base.setindex!(a::ViewStructArray{T, N}, v, I::Vararg{Int, N}) where {T, N}
+Base.@propagate_inbounds function Base.setindex!(a::FieldDimArray{T, N}, v, I::Vararg{Int, N}) where {T, N}
     @boundscheck _checkcartesian(a, I)
     p = parent(a)
     c = components(convert(T, v))
@@ -122,7 +122,7 @@ Base.@propagate_inbounds function Base.setindex!(a::ViewStructArray{T, N}, v, I:
     return a
 end
 
-Base.@propagate_inbounds function Base.setindex!(a::ViewStructArray{T}, v, i::Int) where {T}
+Base.@propagate_inbounds function Base.setindex!(a::FieldDimArray{T}, v, i::Int) where {T}
     @boundscheck _checklinear(a, i)
     p = parent(a)
     n = length(a)
@@ -133,13 +133,13 @@ end
 
 const LeadingIndex = Union{Integer, Colon, AbstractVector{<:Integer}}
 
-Base.@propagate_inbounds function Base.view(a::ViewStructArray{T, N}, I::Vararg{LeadingIndex, N}) where {T, N}
+Base.@propagate_inbounds function Base.view(a::FieldDimArray{T, N}, I::Vararg{LeadingIndex, N}) where {T, N}
     J = to_indices(a, I)
     @boundscheck checkbounds(a, J...)
     return _rewrap(a, view(parent(a), J..., _colons(Val(_nfielddims(typeof(a))))...))
 end
 
-Base.@propagate_inbounds function Base.getindex(a::ViewStructArray{T, N}, I::Vararg{LeadingIndex, N}) where {T, N}
+Base.@propagate_inbounds function Base.getindex(a::FieldDimArray{T, N}, I::Vararg{LeadingIndex, N}) where {T, N}
     J = to_indices(a, I)
     @boundscheck checkbounds(a, J...)
     return _leadinggetindex(a, J)
@@ -148,26 +148,26 @@ end
 _leadinggetindex(a, J::Tuple{Vararg{Int}}) = a[J...]
 _leadinggetindex(a, J) = _rewrap(a, parent(a)[J..., _colons(Val(_nfielddims(typeof(a))))...])
 
-function _rewrap(a::ViewStructArray{T}, p::AbstractArray) where {T}
-    return ViewStructArray{_withcomponents(T, eltype(p)), ndims(p) - _nfielddims(typeof(a))}(p)
+function _rewrap(a::FieldDimArray{T}, p::AbstractArray) where {T}
+    return FieldDimArray{_withcomponents(T, eltype(p)), ndims(p) - _nfielddims(typeof(a))}(p)
 end
 
 """
-    fieldview(a::ViewStructArray, k::Integer)
-    fieldview(a::ViewStructArray, i::Integer, j::Integer, ...)
-    fieldview(a::ViewStructArray, name::Symbol)
+    fieldview(a::FieldDimArray, k::Integer)
+    fieldview(a::FieldDimArray, i::Integer, j::Integer, ...)
+    fieldview(a::FieldDimArray, name::Symbol)
 
 The values of one component of every element of `a`, as a view of `parent(a)`. The component
 is given by its position `k` in column-major order, by its indices into the trailing dims of
 `parent(a)`, or by its name (see `propertynames(a)`); `a.name` is `fieldview(a, :name)`.
 """
-function fieldview(a::ViewStructArray{T, N}, k::Integer) where {T, N}
+function fieldview(a::FieldDimArray{T, N}, k::Integer) where {T, N}
     n = ncomponents(T)
     1 <= k <= n || throw(ArgumentError("component index $k is out of range 1:$n for $T"))
     return view(parent(a), _colons(Val(N))..., _fieldindex(a, Int(k))...)
 end
 
-function fieldview(a::ViewStructArray{T, N}, i::Integer, j::Integer, I::Integer...) where {T, N}
+function fieldview(a::FieldDimArray{T, N}, i::Integer, j::Integer, I::Integer...) where {T, N}
     shape = _fielddims(a)
     idx = (i, j, I...)
     length(idx) == length(shape) && all(map((x, s) -> 1 <= x <= s, idx, shape)) ||
@@ -175,7 +175,7 @@ function fieldview(a::ViewStructArray{T, N}, i::Integer, j::Integer, I::Integer.
     return view(parent(a), _colons(Val(N))..., idx...)
 end
 
-fieldview(a::ViewStructArray{T}, name::Symbol) where {T} = fieldview(a, _componentindex(T, name))
+fieldview(a::FieldDimArray{T}, name::Symbol) where {T} = fieldview(a, _componentindex(T, name))
 
 function _componentindex(::Type{T}, name::Symbol) where {T}
     k = findfirst(==(name), componentnames(T))
@@ -183,39 +183,39 @@ function _componentindex(::Type{T}, name::Symbol) where {T}
     return k
 end
 
-Base.getproperty(a::ViewStructArray, name::Symbol) = fieldview(a, name)
-Base.propertynames(a::ViewStructArray) = componentnames(eltype(a))
+Base.getproperty(a::FieldDimArray, name::Symbol) = fieldview(a, name)
+Base.propertynames(a::FieldDimArray) = componentnames(eltype(a))
 
 """
     elementview(::Type{T}, parent::AbstractArray)
     elementview(a::AbstractArray)
 
 The array whose elements are the logical elements of a container. `elementview(T, parent)` is
-`ViewStructArray{T}(parent)`, or `parent` itself when `eltype(parent) <: T`. An array is its own
+`FieldDimArray{T}(parent)`, or `parent` itself when `eltype(parent) <: T`. An array is its own
 element view. Containers that wrap dense storage add a method returning the array of their
 elements.
 """
-elementview(::Type{T}, parent::AbstractArray) where {T} = eltype(parent) <: T ? parent : ViewStructArray{T}(parent)
+elementview(::Type{T}, parent::AbstractArray) where {T} = eltype(parent) <: T ? parent : FieldDimArray{T}(parent)
 elementview(a::AbstractArray) = a
 
-function Base.similar(a::ViewStructArray{T}, ::Type{S}, dims::Dims) where {T, S}
+function Base.similar(a::FieldDimArray{T}, ::Type{S}, dims::Dims) where {T, S}
     p = parent(a)
     if S === T
-        return ViewStructArray{T, length(dims)}(similar(p, (dims..., _fielddims(a)...)))
-    elseif isviewelement(S)
-        return ViewStructArray{S, length(dims)}(similar(p, componenttype(S), (dims..., fieldshape(S)...)))
+        return FieldDimArray{T, length(dims)}(similar(p, (dims..., _fielddims(a)...)))
+    elseif isfieldelement(S)
+        return FieldDimArray{S, length(dims)}(similar(p, componenttype(S), (dims..., fieldshape(S)...)))
     else
         return similar(p, S, dims)
     end
 end
 
-Base.copy(a::ViewStructArray{T, N}) where {T, N} = ViewStructArray{T, N}(copy(parent(a)))
+Base.copy(a::FieldDimArray{T, N}) where {T, N} = FieldDimArray{T, N}(copy(parent(a)))
 
-Base.dataids(a::ViewStructArray) = Base.dataids(parent(a))
-Base.unaliascopy(a::ViewStructArray{T, N}) where {T, N} = ViewStructArray{T, N}(Base.unaliascopy(parent(a)))
+Base.dataids(a::FieldDimArray) = Base.dataids(parent(a))
+Base.unaliascopy(a::FieldDimArray{T, N}) where {T, N} = FieldDimArray{T, N}(Base.unaliascopy(parent(a)))
 
-function Base.showarg(io::IO, a::ViewStructArray{T}, toplevel) where {T}
-    print(io, "ViewStructArray{", T, "}(")
+function Base.showarg(io::IO, a::FieldDimArray{T}, toplevel) where {T}
+    print(io, "FieldDimArray{", T, "}(")
     Base.showarg(io, parent(a), false)
     print(io, ')')
     toplevel && print(io, " with eltype ", T)

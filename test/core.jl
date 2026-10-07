@@ -6,8 +6,8 @@ component(a, k) = fieldview(a, k)
 
 @testset "construction" begin
     data = reshape(collect(1.0:12.0), 4, 3)
-    a = @inferred ViewStructArray{Point3D}(data)
-    @test a isa ViewStructArray{Point3D, 1, Matrix{Float64}}
+    a = @inferred FieldDimArray{Point3D}(data)
+    @test a isa FieldDimArray{Point3D, 1, Matrix{Float64}}
     @test size(a) == (4,)
     @test axes(a) == (Base.OneTo(4),)
     @test length(a) == 4
@@ -15,31 +15,31 @@ component(a, k) = fieldview(a, k)
     @test parent(a) === data
     @test IndexStyle(a) == IndexLinear()
 
-    b = @inferred ViewStructArray{Point2D}(reshape(collect(Float32, 1:8), 4, 2))
+    b = @inferred FieldDimArray{Point2D}(reshape(collect(Float32, 1:8), 4, 2))
     @test eltype(b) == Point2D{Float32}
-    @test @inferred(ViewStructArray{Point2D{Float64}}(rand(3, 2))) isa ViewStructArray{Point2D{Float64}, 1}
-    @test @inferred(ViewStructArray{Point2D, 2}(rand(3, 4, 2))) isa ViewStructArray{Point2D{Float64}, 2}
+    @test @inferred(FieldDimArray{Point2D{Float64}}(rand(3, 2))) isa FieldDimArray{Point2D{Float64}, 1}
+    @test @inferred(FieldDimArray{Point2D, 2}(rand(3, 4, 2))) isa FieldDimArray{Point2D{Float64}, 2}
 
-    c = ViewStructArray{RGBA}(reshape(collect(Float32, 1:16), 4, 4))
+    c = FieldDimArray{RGBA}(reshape(collect(Float32, 1:16), 4, 4))
     @test c[1] == RGBA(1, 5, 9, 13)
     @test c[4] == RGBA(4, 8, 12, 16)
 
-    z = ViewStructArray{Point3D}([1.0, 2.0, 3.0])
+    z = FieldDimArray{Point3D}([1.0, 2.0, 3.0])
     @test size(z) == ()
     @test z[] == Point3D(1.0, 2.0, 3.0)
 
-    big = ViewStructArray{Point2D}(BigFloat[1 3; 2 4])
+    big = FieldDimArray{Point2D}(BigFloat[1 3; 2 4])
     @test eltype(big) == Point2D{BigFloat}
     @test big[2].x == 2 && big[2].y == 4
 
-    @test_throws "the components of Point3D have type Float64, but the parent has element type Int64" ViewStructArray{Point3D}(reshape(collect(1:12), 4, 3))
-    @test_throws "the trailing size of the parent must be (3,) to hold the components of Point3D; got (2,)" ViewStructArray{Point3D}(rand(4, 2))
-    @test_throws "needs at least 1 dims" ViewStructArray{Point3D}(fill(1.0))
-    @test_throws "a ViewStructArray{Point3D, 1} needs a parent with 2 dims" ViewStructArray{Point3D, 1}(rand(2, 3, 3))
-    @test_throws "the fields of Mixed must all have the same type" ViewStructArray{Mixed}(rand(3, 2))
-    @test_throws "Float64 has no fields" ViewStructArray{Float64}(rand(3, 2))
+    @test_throws "the components of Point3D have type Float64, but the parent has element type Int64" FieldDimArray{Point3D}(reshape(collect(1:12), 4, 3))
+    @test_throws "the trailing size of the parent must be (3,) to hold the components of Point3D; got (2,)" FieldDimArray{Point3D}(rand(4, 2))
+    @test_throws "needs at least 1 dims" FieldDimArray{Point3D}(fill(1.0))
+    @test_throws "a FieldDimArray{Point3D, 1} needs a parent with 2 dims" FieldDimArray{Point3D, 1}(rand(2, 3, 3))
+    @test_throws "the fields of Mixed must all have the same type" FieldDimArray{Mixed}(rand(3, 2))
+    @test_throws "Float64 has no fields" FieldDimArray{Float64}(rand(3, 2))
     @test_throws "cannot build an element type like Point3D with components of type Float32" withcomponenttype(Point3D, Float32)
-    @test_throws "element type Point2D must be concrete" ViewStructArray{Point2D, 1, Matrix{Float64}}(rand(3, 2))
+    @test_throws "element type Point2D must be concrete" FieldDimArray{Point2D, 1, Matrix{Float64}}(rand(3, 2))
 end
 
 @testset "element types" begin
@@ -52,24 +52,24 @@ end
     @test withcomponenttype(Point2D, Float64) == Point2D{Float64}
     @test withcomponenttype(Point2D{Float64}, Float32) == Point2D{Float32}
     @test withcomponenttype(Point3D, Float64) == Point3D
-    @test isviewelement(Point3D)
-    @test !isviewelement(Float64)
-    @test !isviewelement(ComplexF64)
-    @test !isviewelement(Mixed)
-    @test !isviewelement(Point2D)
-    @test !isviewelement(NTuple{2, Float64})
-    @test !isviewelement(Base.RefValue{Float64})
+    @test isfieldelement(Point3D)
+    @test !isfieldelement(Float64)
+    @test !isfieldelement(ComplexF64)
+    @test !isfieldelement(Mixed)
+    @test !isfieldelement(Point2D)
+    @test !isfieldelement(NTuple{2, Float64})
+    @test !isfieldelement(Base.RefValue{Float64})
 
-    t = ViewStructArray{NTuple{2, Float64}}([1.0 3.0; 2.0 4.0])
+    t = FieldDimArray{NTuple{2, Float64}}([1.0 3.0; 2.0 4.0])
     @test t[2] === (2.0, 4.0)
-    nt = ViewStructArray{@NamedTuple{a::Float64, b::Float64}}([1.0 3.0; 2.0 4.0])
+    nt = FieldDimArray{@NamedTuple{a::Float64, b::Float64}}([1.0 3.0; 2.0 4.0])
     @test nt[1] === (a = 1.0, b = 3.0)
     @test nt.b == [3.0, 4.0]
 end
 
 @testset "indexing" begin
     data = reshape(collect(1.0:24.0), 3, 4, 2)
-    a = ViewStructArray{Point2D{Float64}}(data)
+    a = FieldDimArray{Point2D{Float64}}(data)
     @test size(a) == (3, 4)
     @test a[1, 1] == Point2D(1.0, 13.0)
     @test a[2, 1] == Point2D(2.0, 14.0)
@@ -85,7 +85,7 @@ end
     a[4] = Point2D(-1.0, -2.0)
     @test a[1, 2] == Point2D(-1.0, -2.0)
 
-    v = ViewStructArray{Point3D}(reshape(collect(1.0:12.0), 4, 3))
+    v = FieldDimArray{Point3D}(reshape(collect(1.0:12.0), 4, 3))
     @test v[1] == Point3D(1.0, 5.0, 9.0)
     @test v[CartesianIndex(1)] == v[1]
     v[1] = Point3D(100.0, 200.0, 300.0)
@@ -99,7 +99,7 @@ end
     @test_throws BoundsError (a[4, 1] = Point2D(0.0, 0.0))
 
     # A parent shrunk after construction no longer holds every component.
-    w = ViewStructArray{Point3D, 0}(collect(1.0:3.0))
+    w = FieldDimArray{Point3D, 0}(collect(1.0:3.0))
     @test w[] == Point3D(1.0, 2.0, 3.0)
     resize!(parent(w), 2)
     @test_throws BoundsError w[]
@@ -118,21 +118,21 @@ end
 
 @testset "views and slices" begin
     data = reshape(collect(1.0:24.0), 3, 4, 2)
-    a = ViewStructArray{Point2D{Float64}}(data)
+    a = FieldDimArray{Point2D{Float64}}(data)
 
     s = @inferred view(a, 2:3, :)
-    @test s isa ViewStructArray{Point2D{Float64}, 2}
+    @test s isa FieldDimArray{Point2D{Float64}, 2}
     @test parent(s) isa SubArray
     @test s == a[2:3, :]
     s[1, 1] = Point2D(-5.0, -6.0)
     @test a[2, 1] == Point2D(-5.0, -6.0)
 
     r = @inferred view(a, 2, 1:3)
-    @test r isa ViewStructArray{Point2D{Float64}, 1}
+    @test r isa FieldDimArray{Point2D{Float64}, 1}
     @test r == [a[2, j] for j in 1:3]
 
     c = @inferred getindex(a, 1:2, 3)
-    @test c isa ViewStructArray{Point2D{Float64}, 1, Matrix{Float64}}
+    @test c isa FieldDimArray{Point2D{Float64}, 1, Matrix{Float64}}
     @test c == [a[1, 3], a[2, 3]]
     c[1] = Point2D(0.0, 0.0)
     @test a[1, 3] != Point2D(0.0, 0.0)
@@ -148,7 +148,7 @@ end
 @testset "views and reshapes as parents" begin
     big = reshape(collect(1.0:60.0), 5, 4, 3)
     pv = view(big, 2:4, :, 1:2)
-    a = ViewStructArray{Point2D}(pv)
+    a = FieldDimArray{Point2D}(pv)
     @test size(a) == (3, 4)
     @test a[2, 3] == Point2D(big[3, 3, 1], big[3, 3, 2])
     @test a[5] == a[2, 2]
@@ -156,14 +156,14 @@ end
     @test big[3, 3, 1] == 0.0 && big[3, 3, 2] == 1.0
     @test IndexStyle(a) == IndexCartesian()
 
-    stepped = ViewStructArray{Point3D}(view(reshape(collect(1.0:30.0), 10, 3), 1:2:9, :))
+    stepped = FieldDimArray{Point3D}(view(reshape(collect(1.0:30.0), 10, 3), 1:2:9, :))
     @test stepped[3] == Point3D(5.0, 15.0, 25.0)
 
-    rr = ViewStructArray{Point2D}(reshape(1.0:12.0, 3, 2, 2))
+    rr = FieldDimArray{Point2D}(reshape(1.0:12.0, 3, 2, 2))
     @test rr[2, 2] == Point2D(5.0, 11.0)
     @test rr[5] == rr[2, 2]
 
-    rv = ViewStructArray{Point3D}(reshape(view(collect(1.0:24.0), 1:12), 4, 3))
+    rv = FieldDimArray{Point3D}(reshape(view(collect(1.0:24.0), 1:12), 4, 3))
     @test rv[4] == Point3D(4.0, 8.0, 12.0)
     @test copy(rv) == rv
     @test parent(copy(rv)) isa Matrix{Float64}
@@ -171,7 +171,7 @@ end
 
 @testset "fieldview and properties" begin
     data = reshape(collect(1.0:12.0), 4, 3)
-    a = ViewStructArray{Point3D}(data)
+    a = FieldDimArray{Point3D}(data)
     @test @inferred(fieldview(a, 1)) == [1.0, 2.0, 3.0, 4.0]
     @test fieldview(a, 2) == [5.0, 6.0, 7.0, 8.0]
     @test fieldview(a, :z) == [9.0, 10.0, 11.0, 12.0]
@@ -191,16 +191,16 @@ end
 
 @testset "similar, copy, show" begin
     data = reshape(collect(1.0:12.0), 4, 3)
-    a = ViewStructArray{Point3D}(data)
+    a = FieldDimArray{Point3D}(data)
 
     s1 = @inferred similar(a)
-    @test s1 isa ViewStructArray{Point3D, 1, Matrix{Float64}}
+    @test s1 isa FieldDimArray{Point3D, 1, Matrix{Float64}}
     @test size(s1) == (4,)
     s2 = @inferred similar(a, Point3D, (2, 3))
-    @test s2 isa ViewStructArray{Point3D, 2, Array{Float64, 3}}
+    @test s2 isa FieldDimArray{Point3D, 2, Array{Float64, 3}}
     @test size(parent(s2)) == (2, 3, 3)
     s3 = @inferred similar(a, Point2D{Float32})
-    @test s3 isa ViewStructArray{Point2D{Float32}, 1, Matrix{Float32}}
+    @test s3 isa FieldDimArray{Point2D{Float32}, 1, Matrix{Float32}}
     s4 = @inferred similar(a, Float64)
     @test s4 isa Vector{Float64}
     s5 = @inferred similar(a, Mixed, (2,))
@@ -210,7 +210,7 @@ end
     @test c == a
     @test parent(c) !== data
 
-    @test summary(a) == "4-element ViewStructArray{Point3D}(::Matrix{Float64}) with eltype Point3D"
+    @test summary(a) == "4-element FieldDimArray{Point3D}(::Matrix{Float64}) with eltype Point3D"
     @test occursin("Point3D(1.0, 5.0, 9.0)", sprint(show, MIME"text/plain"(), a))
     @test Base.mightalias(a, data)
     @test !Base.mightalias(a, c)
@@ -218,16 +218,16 @@ end
 
 @testset "elementview" begin
     P = rand(3, 4, 2)
-    @test @inferred(elementview(Point2D, P)) isa ViewStructArray{Point2D{Float64}, 2}
+    @test @inferred(elementview(Point2D, P)) isa FieldDimArray{Point2D{Float64}, 2}
     @test @inferred(elementview(Float64, P)) === P
     @test elementview(Real, P) === P
-    a = ViewStructArray{Point2D}(P)
+    a = FieldDimArray{Point2D}(P)
     @test @inferred(elementview(a)) === a
     @test @inferred(elementview(P)) === P
 end
 
 @testset "inference, allocation and JET for element access" begin
-    a = ViewStructArray{Point2D}(rand(3, 4, 2))
+    a = FieldDimArray{Point2D}(rand(3, 4, 2))
     v = Point2D(1.0, 2.0)
     read_cartesian(a, 2, 3); read_linear(a, 5); write_cartesian!(a, v, 2, 3); write_linear!(a, v, 5)
     @test @inferred(read_cartesian(a, 2, 3)) isa Point2D{Float64}
@@ -240,28 +240,28 @@ end
     @test (@allocated write_linear!(a, v, 5)) == 0
     component(a, 2)
     @test (@allocated component(a, 2)) == 0
-    JET.@test_opt target_modules = (ViewStructArrays,) read_cartesian(a, 2, 3)
-    JET.@test_opt target_modules = (ViewStructArrays,) read_linear(a, 5)
-    JET.@test_opt target_modules = (ViewStructArrays,) write_cartesian!(a, v, 2, 3)
-    JET.@test_opt target_modules = (ViewStructArrays,) write_linear!(a, v, 5)
-    JET.@test_opt target_modules = (ViewStructArrays,) ViewStructArray{Point2D}(rand(3, 4, 2))
+    JET.@test_opt target_modules = (FieldDimArrays,) read_cartesian(a, 2, 3)
+    JET.@test_opt target_modules = (FieldDimArrays,) read_linear(a, 5)
+    JET.@test_opt target_modules = (FieldDimArrays,) write_cartesian!(a, v, 2, 3)
+    JET.@test_opt target_modules = (FieldDimArrays,) write_linear!(a, v, 5)
+    JET.@test_opt target_modules = (FieldDimArrays,) FieldDimArray{Point2D}(rand(3, 4, 2))
 end
 
 @testset "complex components" begin
     P = ComplexF64[1 + 1im 3; 2 4 - 2im]
-    a = ViewStructArray{Point2D}(P)
+    a = FieldDimArray{Point2D}(P)
     @test eltype(a) == Point2D{ComplexF64}
     @test a[2] == Point2D(2.0 + 0im, 4.0 - 2im)
     a[1] = Point2D(0.0im, 1.0im)
     @test P[1, :] == [0.0im, 1.0im]
-    c = ViewStructArray{ComplexF64}([1.0 3.0; 2.0 4.0])
+    c = FieldDimArray{ComplexF64}([1.0 3.0; 2.0 4.0])
     @test c == [1 + 3im, 2 + 4im]
 end
 
 @testset "Adapt" begin
-    a = ViewStructArray{Point2D}(rand(3, 2))
+    a = FieldDimArray{Point2D}(rand(3, 2))
     b = adapt(Array{Float32}, a)
-    @test b isa ViewStructArray{Point2D{Float32}, 1, Matrix{Float32}}
+    @test b isa FieldDimArray{Point2D{Float32}, 1, Matrix{Float32}}
     @test parent(b) ≈ parent(a)
     @test Adapt.parent_type(typeof(a)) == Matrix{Float64}
 end

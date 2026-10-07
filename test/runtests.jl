@@ -1,6 +1,6 @@
-using ViewStructArrays
-using ViewStructArrays: ncomponents, fieldshape, componenttype, componentnames, fromcomponents,
-    components, withcomponenttype, isviewelement
+using FieldDimArrays
+using FieldDimArrays: ncomponents, fieldshape, componenttype, componentnames, fromcomponents,
+    components, withcomponenttype, isfieldelement
 using Test
 using JET
 using StaticArrays
@@ -36,7 +36,7 @@ struct Stokes{T} <: FieldVector{4, T}
     V::T
 end
 
-@testset "ViewStructArrays.jl" begin
+@testset "FieldDimArrays.jl" begin
     include("core.jl")
     include("staticarrays.jl")
     include("broadcast.jl")

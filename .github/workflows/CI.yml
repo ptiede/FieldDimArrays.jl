@@ -68,9 +68,9 @@ jobs:
         shell: julia --project=docs --color=yes {0}
         run: |
           using Documenter: DocMeta, doctest
-          using ViewStructArrays
-          DocMeta.setdocmeta!(ViewStructArrays, :DocTestSetup, :(using ViewStructArrays); recursive=true)
-          doctest(ViewStructArrays)
+          using FieldDimArrays
+          DocMeta.setdocmeta!(FieldDimArrays, :DocTestSetup, :(using FieldDimArrays); recursive=true)
+          doctest(FieldDimArrays)
   runic:
     name: Runic formatting
     runs-on: ubuntu-latest

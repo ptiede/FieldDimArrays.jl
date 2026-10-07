@@ -1,14 +1,14 @@
 ```@meta
-CurrentModule = ViewStructArrays
+CurrentModule = FieldDimArrays
 ```
 
-# ViewStructArrays
+# FieldDimArrays
 
-Documentation for [ViewStructArrays](https://github.com/ptiede/ViewStructArrays.jl).
+Documentation for [FieldDimArrays](https://github.com/ptiede/FieldDimArrays.jl).
 
 ```@index
 ```
 
 ```@autodocs
-Modules = [ViewStructArrays]
+Modules = [FieldDimArrays]
 ```

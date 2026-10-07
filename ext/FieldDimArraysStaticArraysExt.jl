@@ -1,8 +1,8 @@
-module ViewStructArraysStaticArraysExt
+module FieldDimArraysStaticArraysExt
 
 using StaticArrays: StaticArray, FieldArray, similar_type
-import ViewStructArrays: ncomponents, fieldshape, componenttype, componentnames, fromcomponents,
-    components, withcomponenttype, isviewelement
+import FieldDimArrays: ncomponents, fieldshape, componenttype, componentnames, fromcomponents,
+    components, withcomponenttype, isfieldelement
 
 ncomponents(::Type{T}) where {T <: StaticArray} = length(T)
 fieldshape(::Type{T}) where {T <: StaticArray} = size(T)
@@ -11,7 +11,7 @@ componentnames(::Type{<:StaticArray}) = ()
 componentnames(::Type{T}) where {T <: FieldArray} = fieldnames(T)
 fromcomponents(::Type{T}, c::Tuple) where {T <: StaticArray} = T(c)
 components(x::StaticArray) = Tuple(x)
-isviewelement(::Type{T}) where {T <: StaticArray} = isconcretetype(T) && !ismutabletype(T)
+isfieldelement(::Type{T}) where {T <: StaticArray} = isconcretetype(T) && !ismutabletype(T)
 
 function withcomponenttype(::Type{T}, ::Type{S}) where {T <: StaticArray, S}
     isconcretetype(T) && eltype(T) === S && return T
@@ -28,7 +28,7 @@ function withcomponenttype(::Type{T}, ::Type{S}) where {T <: FieldArray, S}
     W = Base.typename(T).wrapper
     T2 = W isa UnionAll ? W{S} : W
     (isconcretetype(T2) && eltype(T2) === S) ||
-        throw(ArgumentError("cannot build a field array type like $T with elements of type $S; define `ViewStructArrays.withcomponenttype` for it"))
+        throw(ArgumentError("cannot build a field array type like $T with elements of type $S; define `FieldDimArrays.withcomponenttype` for it"))
     return T2
 end
 

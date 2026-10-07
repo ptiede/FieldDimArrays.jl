@@ -4,13 +4,13 @@ using Enzyme
 
 stokes_map(s) = Stokes(s.I * s.Q, s.Q + s.U, s.U * s.V, exp(s.I))
 stokes_all(a) = stokes_map.(a)
-stokes_wrap(P) = stokes_map.(ViewStructArray{Stokes}(P))
+stokes_wrap(P) = stokes_map.(FieldDimArray{Stokes}(P))
 stokes_into!(d, a) = (d .= stokes_map.(a); d)
 stokes_scalar(a) = (s -> s.I * s.V).(a)
 stokes_weighted(a, w) = ((s, x) -> Stokes(s.I * x, s.Q, s.U, s.V * x)).(a, w)
 point_all(a) = rotate.(a)
 svector_all(a) = (v -> SVector(v[1] * v[2], v[2] - v[3], exp(v[3]))).(a)
-stokes_loss(P) = sum(abs2, parent(stokes_map.(ViewStructArray{Stokes}(P))))
+stokes_loss(P) = sum(abs2, parent(stokes_map.(FieldDimArray{Stokes}(P))))
 stokes_gradient(P) = Enzyme.gradient(Enzyme.Reverse, stokes_loss, P)[1]
 
 function stokes_loss_gradient(P)
@@ -36,20 +36,20 @@ result_slices(a) = parent(a).sharding.device_to_array_slices
 
     @testset "tracing" begin
         Ph = rand(8, 6, 4)
-        ah = ViewStructArray{Stokes}(Ph)
+        ah = FieldDimArray{Stokes}(Ph)
         ar = Reactant.to_rarray(ah)
-        @test ar isa ViewStructArray{Stokes{Float64}, 2, <:Reactant.ConcreteIFRTArray{Float64, 3}}
+        @test ar isa FieldDimArray{Stokes{Float64}, 2, <:Reactant.ConcreteIFRTArray{Float64, 3}}
         @test Array(parent(ar)) == Ph
         T = Reactant.traced_type(typeof(ar), Val(Reactant.ConcreteToTraced), Union{}, Reactant.Sharding.NoSharding(), nothing)
-        @test T == ViewStructArray{Stokes{Reactant.TracedRNumber{Float64}}, 2, Reactant.TracedRArray{Float64, 3}}
+        @test T == FieldDimArray{Stokes{Reactant.TracedRNumber{Float64}}, 2, Reactant.TracedRArray{Float64, 3}}
         r = @jit identity(ar)
-        @test r isa ViewStructArray{Stokes{Float64}, 2}
+        @test r isa FieldDimArray{Stokes{Float64}, 2}
         @test Array(parent(r)) == Ph
     end
 
     @testset "broadcasts equal the host" begin
         Ph = rand(8, 6, 4)
-        ah = ViewStructArray{Stokes}(Ph)
+        ah = FieldDimArray{Stokes}(Ph)
         ar = Reactant.to_rarray(ah)
         Pr = Reactant.to_rarray(Ph)
         wh = rand(8, 6)
@@ -57,7 +57,7 @@ result_slices(a) = parent(a).sharding.device_to_array_slices
         ref = parent(stokes_all(ah))
 
         r = @jit stokes_all(ar)
-        @test r isa ViewStructArray{Stokes{Float64}, 2}
+        @test r isa FieldDimArray{Stokes{Float64}, 2}
         @test Array(parent(r)) ≈ ref
         @test Array(parent(@jit stokes_wrap(Pr))) ≈ ref
         @test Array(@jit stokes_scalar(ar)) ≈ stokes_scalar(ah)
@@ -65,16 +65,16 @@ result_slices(a) = parent(a).sharding.device_to_array_slices
         d = Reactant.to_rarray(similar(ah))
         @test Array(parent(@jit stokes_into!(d, ar))) ≈ ref
 
-        ph = ViewStructArray{Point2D}(rand(5, 2))
+        ph = FieldDimArray{Point2D}(rand(5, 2))
         @test Array(parent(@jit point_all(Reactant.to_rarray(ph)))) ≈ parent(point_all(ph))
 
-        vh = ViewStructArray{SVector{3}}(rand(7, 3))
+        vh = FieldDimArray{SVector{3}}(rand(7, 3))
         @test Array(parent(@jit svector_all(Reactant.to_rarray(vh)))) ≈ parent(svector_all(vh))
 
-        A, X, B = (ViewStructArray{SMatrix{2, 2}}(rand(8, 2, 2)) for _ in 1:3)
+        A, X, B = (FieldDimArray{SMatrix{2, 2}}(rand(8, 2, 2)) for _ in 1:3)
         Ar, Xr, Br = Reactant.to_rarray.((A, X, B))
         m = @jit sandwich(Ar, Xr, Br)
-        @test m isa ViewStructArray{SMatrix{2, 2, Float64, 4}, 1}
+        @test m isa FieldDimArray{SMatrix{2, 2, Float64, 4}, 1}
         @test Array(parent(m)) ≈ parent(sandwich(A, X, B))
         D = Reactant.to_rarray(similar(A))
         @test Array(parent(@jit sandwich_into!(D, Ar, Xr, Br))) ≈ parent(sandwich(A, X, B))
@@ -93,9 +93,9 @@ result_slices(a) = parent(a).sharding.device_to_array_slices
 
         @testset "Stokes elements along a leading dim" begin
             Ph = rand(8, 6, 4)
-            as = ViewStructArray{Stokes}(shard(Ph, 1))
+            as = FieldDimArray{Stokes}(shard(Ph, 1))
             r = @jit stokes_all(as)
-            @test Array(parent(r)) ≈ parent(stokes_all(ViewStructArray{Stokes}(Ph)))
+            @test Array(parent(r)) ≈ parent(stokes_all(FieldDimArray{Stokes}(Ph)))
             @test sort(unique(first.(result_slices(r)))) == split(8)
             @test all(s -> s[2] == 1:6 && s[3] == 1:4, result_slices(r))
             @test gathers(repr(@code_xla shardy_passes = :to_mhlo_shardings stokes_all(as))) == 0
@@ -106,15 +106,15 @@ result_slices(a) = parent(a).sharding.device_to_array_slices
             Ph = rand(6, 8, 4)
             Ps = shard(Ph, 2)
             r2 = @jit stokes_wrap(Ps)
-            @test Array(parent(r2)) ≈ parent(stokes_all(ViewStructArray{Stokes}(Ph)))
+            @test Array(parent(r2)) ≈ parent(stokes_all(FieldDimArray{Stokes}(Ph)))
             @test sort(unique(map(s -> s[2], result_slices(r2)))) == split(8)
             @test all(s -> s[1] == 1:6 && s[3] == 1:4, result_slices(r2))
             @test gathers(repr(@code_xla shardy_passes = :to_mhlo_shardings stokes_wrap(Ps))) == 0
         end
 
         @testset "2×2 elements along a leading dim" begin
-            A, X, B = (ViewStructArray{SMatrix{2, 2}}(rand(8, 2, 2)) for _ in 1:3)
-            As, Xs, Bs = (ViewStructArray{SMatrix{2, 2}}(shard(parent(M), 1)) for M in (A, X, B))
+            A, X, B = (FieldDimArray{SMatrix{2, 2}}(rand(8, 2, 2)) for _ in 1:3)
+            As, Xs, Bs = (FieldDimArray{SMatrix{2, 2}}(shard(parent(M), 1)) for M in (A, X, B))
             m = @jit sandwich(As, Xs, Bs)
             @test Array(parent(m)) ≈ parent(sandwich(A, X, B))
             @test sort(unique(first.(result_slices(m)))) == split(8)
@@ -123,7 +123,7 @@ result_slices(a) = parent(a).sharding.device_to_array_slices
             @test gathers(xla) == 0
             @test !occursin("scatter", xla)
 
-            Ds = ViewStructArray{SMatrix{2, 2}}(shard(zeros(8, 2, 2), 1))
+            Ds = FieldDimArray{SMatrix{2, 2}}(shard(zeros(8, 2, 2), 1))
             mi = @jit sandwich_into!(Ds, As, Xs, Bs)
             @test Array(parent(mi)) ≈ parent(sandwich(A, X, B))
             @test sort(unique(first.(result_slices(mi)))) == split(8)

@@ -32,7 +32,7 @@ _ishomogeneous(::Type{T}) where {T} = all(==(fieldtype(T, 1)), fieldtypes(T))
     componentnames(::Type{T}) -> Tuple{Vararg{Symbol}}
 
 The names under which the components of `T` are accessible with `getproperty` on a
-`ViewStructArray{T}`. For a struct these are its field names.
+`FieldDimArray{T}`. For a struct these are its field names.
 """
 componentnames(::Type{T}) where {T} = fieldnames(T)
 
@@ -70,19 +70,19 @@ function withcomponenttype(::Type{T}, ::Type{S}) where {T, S}
     W isa UnionAll || throw(ArgumentError("cannot build an element type like $T with components of type $S: $W has no type parameters"))
     T2 = W{S}
     (isconcretetype(T2) && componenttype(T2) === S) ||
-        throw(ArgumentError("cannot build an element type like $T with components of type $S: $T2 is not a concrete type with components of type $S; define `ViewStructArrays.withcomponenttype` for it"))
+        throw(ArgumentError("cannot build an element type like $T with components of type $S: $T2 is not a concrete type with components of type $S; define `FieldDimArrays.withcomponenttype` for it"))
     return T2
 end
 
 """
-    isviewelement(::Type{T}) -> Bool
+    isfieldelement(::Type{T}) -> Bool
 
-Whether results of type `T` produced by broadcasting over a `ViewStructArray` are stored as a
-new `ViewStructArray{T}` over dense storage. True for concrete immutable structs whose fields
+Whether results of type `T` produced by broadcasting over a `FieldDimArray` are stored as a
+new `FieldDimArray{T}` over dense storage. True for concrete immutable structs whose fields
 all have one type, except `Number`s, `Tuple`s and `NamedTuple`s, which are stored as plain
 arrays.
 """
-function isviewelement(::Type{T}) where {T}
+function isfieldelement(::Type{T}) where {T}
     return isconcretetype(T) && isstructtype(T) && !ismutabletype(T) &&
         !(T <: Union{Number, Tuple, NamedTuple}) && fieldcount(T) > 0 && _ishomogeneous(T)
 end

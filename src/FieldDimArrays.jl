@@ -1,6 +1,6 @@
-module ViewStructArrays
+module FieldDimArrays
 
-export ViewStructArray, fieldview, elementview
+export FieldDimArray, fieldview, elementview
 
 include("elements.jl")
 include("array.jl")

@@ -1,64 +1,64 @@
 """
-    ViewStructArrayStyle{N}
+    FieldDimArrayStyle{N}
 
-The broadcast style of an `N`-dim `ViewStructArray`. It wins over `DefaultArrayStyle`. An
-out-of-place broadcast whose result element type `E` satisfies `isviewelement(E)` returns a
-`ViewStructArray{E}` over new storage allocated like the parent of the first
-`ViewStructArray` argument; other results are allocated with `similar` of that parent.
+The broadcast style of an `N`-dim `FieldDimArray`. It wins over `DefaultArrayStyle`. An
+out-of-place broadcast whose result element type `E` satisfies `isfieldelement(E)` returns a
+`FieldDimArray{E}` over new storage allocated like the parent of the first
+`FieldDimArray` argument; other results are allocated with `similar` of that parent.
 """
-struct ViewStructArrayStyle{N} <: Broadcast.AbstractArrayStyle{N} end
-ViewStructArrayStyle{M}(::Val{N}) where {M, N} = ViewStructArrayStyle{N}()
+struct FieldDimArrayStyle{N} <: Broadcast.AbstractArrayStyle{N} end
+FieldDimArrayStyle{M}(::Val{N}) where {M, N} = FieldDimArrayStyle{N}()
 
-Base.BroadcastStyle(::Type{<:ViewStructArray{T, N}}) where {T, N} = ViewStructArrayStyle{N}()
+Base.BroadcastStyle(::Type{<:FieldDimArray{T, N}}) where {T, N} = FieldDimArrayStyle{N}()
 
 """
     componentwise(parent::AbstractArray) -> Bool
 
-Whether broadcasts involving `ViewStructArray`s over parents like `parent` run one broadcast
+Whether broadcasts involving `FieldDimArray`s over parents like `parent` run one broadcast
 per component over the component slabs instead of one pass over the elements. False by
 default; array types that cannot index elements one at a time (such as traced arrays) return
 true.
 """
 componentwise(::AbstractArray) = false
 
-function Base.similar(bc::Broadcast.Broadcasted{<:ViewStructArrayStyle}, ::Type{E}) where {E}
+function Base.similar(bc::Broadcast.Broadcasted{<:FieldDimArrayStyle}, ::Type{E}) where {E}
     p = _template(bc)
     ax = axes(bc)
-    if isviewelement(E)
+    if isfieldelement(E)
         storage = similar(p, componenttype(E), (ax..., map(Base.OneTo, fieldshape(E))...))
-        return ViewStructArray{E, length(ax)}(storage)
+        return FieldDimArray{E, length(ax)}(storage)
     else
         return similar(p, E, ax)
     end
 end
 
-function Base.copy(bc::Broadcast.Broadcasted{<:ViewStructArrayStyle})
+function Base.copy(bc::Broadcast.Broadcasted{<:FieldDimArrayStyle})
     componentwise(_template(bc)) && return _componentwise_copy(bc)
     return invoke(copy, Tuple{Broadcast.Broadcasted}, bc)
 end
-Base.copy(bc::Broadcast.Broadcasted{ViewStructArrayStyle{0}}) = invoke(copy, Tuple{Broadcast.Broadcasted{<:Broadcast.AbstractArrayStyle{0}}}, bc)
+Base.copy(bc::Broadcast.Broadcasted{FieldDimArrayStyle{0}}) = invoke(copy, Tuple{Broadcast.Broadcasted{<:Broadcast.AbstractArrayStyle{0}}}, bc)
 
-function Base.copyto!(dest::AbstractArray, bc::Broadcast.Broadcasted{<:ViewStructArrayStyle})
+function Base.copyto!(dest::AbstractArray, bc::Broadcast.Broadcasted{<:FieldDimArrayStyle})
     return _copyto!(dest, bc)
 end
-function Base.copyto!(dest::AbstractArray, bc::Broadcast.Broadcasted{ViewStructArrayStyle{0}})
+function Base.copyto!(dest::AbstractArray, bc::Broadcast.Broadcasted{FieldDimArrayStyle{0}})
     return _copyto!(dest, bc)
 end
-Base.copyto!(dest::ViewStructArray, bc::Broadcast.Broadcasted{Nothing}) = _copyto!(dest, bc)
+Base.copyto!(dest::FieldDimArray, bc::Broadcast.Broadcasted{Nothing}) = _copyto!(dest, bc)
 
 @inline function _copyto!(dest, bc)
     componentwise(_template(dest, bc)) && return _componentwise_copyto!(dest, bc)
     return invoke(copyto!, Tuple{AbstractArray, Broadcast.Broadcasted{Nothing}}, dest, convert(Broadcast.Broadcasted{Nothing}, bc))
 end
 
-_template(dest::ViewStructArray, bc) = parent(dest)
+_template(dest::FieldDimArray, bc) = parent(dest)
 _template(dest, bc) = _template(bc)
 _template(bc::Broadcast.Broadcasted) = _firsttemplate(bc.args...)
 _firsttemplate() = nothing
 _firsttemplate(x, rest...) = _ortemplate(_argtemplate(x), rest)
 _ortemplate(t, rest) = t
 _ortemplate(::Nothing, rest) = _firsttemplate(rest...)
-_argtemplate(x::ViewStructArray) = parent(x)
+_argtemplate(x::FieldDimArray) = parent(x)
 _argtemplate(x::Broadcast.Broadcasted) = _template(x)
 _argtemplate(x) = nothing
 
@@ -99,9 +99,9 @@ Component{K}(f) where {K} = Component{K, typeof(f)}(f)
 
 _callwith(f, xs...) = f(xs...)
 
-_layout(::ViewStructArray{T}) where {T} = Val(T)
+_layout(::FieldDimArray{T}) where {T} = Val(T)
 _layout(_) = Val(nothing)
-_leaves(a::ViewStructArray{T}) where {T} = ntuple(k -> fieldview(a, k), Val(ncomponents(T)))
+_leaves(a::FieldDimArray{T}) where {T} = ntuple(k -> fieldview(a, k), Val(ncomponents(T)))
 _leaves(x) = (x,)
 
 _flatleaves(args::Tuple{}) = ()
@@ -142,8 +142,8 @@ end
 
 function _componentwise_copy(bc::Broadcast.Broadcasted)
     E = Broadcast.combine_eltypes(bc.f, bc.args)
-    if isviewelement(E)
-        return ViewStructArray{E, length(axes(bc))}(_componentstorage(E, Val(fieldshape(E)), bc))
+    if isfieldelement(E)
+        return FieldDimArray{E, length(axes(bc))}(_componentstorage(E, Val(fieldshape(E)), bc))
     else
         g, leaves = _componentwise(bc)
         return _callwith.(Ref(g), leaves...)
@@ -151,7 +151,7 @@ function _componentwise_copy(bc::Broadcast.Broadcasted)
 end
 
 # All components are computed before `dest` is written, so `dest` may alias an argument.
-function _componentwise_copyto!(dest::ViewStructArray{T}, bc::Broadcast.Broadcasted) where {T}
+function _componentwise_copyto!(dest::FieldDimArray{T}, bc::Broadcast.Broadcasted) where {T}
     axes(dest) == axes(bc) || throw(DimensionMismatch("destination axes $(axes(dest)) do not match broadcast axes $(axes(bc))"))
     parent(dest) .= _componentstorage(T, Val(_fielddims(dest)), bc)
     return dest

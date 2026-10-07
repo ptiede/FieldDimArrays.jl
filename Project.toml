@@ -1,4 +1,4 @@
-name = "ViewStructArrays"
+name = "FieldDimArrays"
 uuid = "8162b97e-af21-446d-9d6e-57a067fd3c83"
 authors = ["Paul Tiede <ptiede91@gmail.com> and contributors"]
 version = "0.1.0"
@@ -9,9 +9,9 @@ Reactant = "3c362404-f566-11ee-1572-e11a4b42c853"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 
 [extensions]
-ViewStructArraysAdaptExt = "Adapt"
-ViewStructArraysReactantExt = "Reactant"
-ViewStructArraysStaticArraysExt = "StaticArrays"
+FieldDimArraysAdaptExt = "Adapt"
+FieldDimArraysReactantExt = "Reactant"
+FieldDimArraysStaticArraysExt = "StaticArrays"
 
 [compat]
 Adapt = "4"

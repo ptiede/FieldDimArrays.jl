@@ -1,14 +1,14 @@
-using ViewStructArrays
+using FieldDimArrays
 using Documenter
 
-DocMeta.setdocmeta!(ViewStructArrays, :DocTestSetup, :(using ViewStructArrays); recursive = true)
+DocMeta.setdocmeta!(FieldDimArrays, :DocTestSetup, :(using FieldDimArrays); recursive = true)
 
 makedocs(;
-    modules = [ViewStructArrays],
+    modules = [FieldDimArrays],
     authors = "Paul Tiede <ptiede91@gmail.com> and contributors",
-    sitename = "ViewStructArrays.jl",
+    sitename = "FieldDimArrays.jl",
     format = Documenter.HTML(;
-        canonical = "https://ptiede.github.io/ViewStructArrays.jl",
+        canonical = "https://ptiede.github.io/FieldDimArrays.jl",
         edit_link = "main",
         assets = String[],
     ),
@@ -18,6 +18,6 @@ makedocs(;
 )
 
 deploydocs(;
-    repo = "github.com/ptiede/ViewStructArrays.jl",
+    repo = "github.com/ptiede/FieldDimArrays.jl",
     devbranch = "main",
 )
