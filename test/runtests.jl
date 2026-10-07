@@ -40,5 +40,6 @@ end
     include("core.jl")
     include("staticarrays.jl")
     include("broadcast.jl")
+    include("fft.jl")
     include("reactant.jl")
 end

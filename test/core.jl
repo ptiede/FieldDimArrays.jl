@@ -265,3 +265,15 @@ end
     @test parent(b) ≈ parent(a)
     @test Adapt.parent_type(typeof(a)) == Matrix{Float64}
 end
+
+@testset "circshift" begin
+    P = rand(5, 4, 2)
+    a = FieldDimArray{Point2D}(P)
+    @test parent(circshift(a, (1, 2))) == circshift(P, (1, 2, 0))
+    @test parent(circshift(a, 3)) == circshift(P, (3, 0, 0))
+    d = similar(a)
+    @test circshift!(d, a, (2, 1)) === d
+    @test parent(d) == circshift(P, (2, 1, 0))
+    @test parent(circshift!(similar(a), a, ())) == P
+    @test_throws "3 shifts given for a FieldDimArray with 2 dims" circshift!(similar(a), a, (1, 1, 1))
+end

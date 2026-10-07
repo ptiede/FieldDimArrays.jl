@@ -24,6 +24,9 @@ function stokes_loss_gradient(P)
     )
 end
 
+shifted_fft(a) = fftshift(fft(a))
+ifft_into!(a) = (ifft!(a); a)
+
 hlo_text(f, args...) = repr(Reactant.@code_hlo f(args...))
 has_while(text) = occursin("stablehlo.while", text)
 gathers(text) = count("all-gather(", text)
@@ -84,6 +87,18 @@ result_slices(a) = parent(a).sharding.device_to_array_slices
         @test !has_while(hlo_text(stokes_into!, d, ar))
         @test !has_while(hlo_text(sandwich, Ar, Xr, Br))
         @test !has_while(hlo_text(sandwich_into!, D, Ar, Xr, Br))
+    end
+
+    @testset "FFTs" begin
+        P = rand(8, 6, 2)
+        a = FieldDimArray{Point2D}(P)
+        ar = Reactant.to_rarray(a)
+        @test parent(@jit(shifted_fft(ar))) ≈ parent(shifted_fft(a))
+        text = hlo_text(shifted_fft, ar)
+        @test count("stablehlo.fft", text) == 1
+        @test !has_while(text)
+        br = Reactant.to_rarray(fft(a))
+        @test parent(@jit(ifft_into!(br))) ≈ P
     end
 
     @testset "sharding" begin

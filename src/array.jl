@@ -211,6 +211,15 @@ end
 
 Base.copy(a::FieldDimArray{T, N}) where {T, N} = FieldDimArray{T, N}(copy(parent(a)))
 
+function Base.circshift!(dest::FieldDimArray{T, N}, src::FieldDimArray, shiftamt::Base.DimsInteger) where {T, N}
+    length(shiftamt) <= N ||
+        throw(ArgumentError("$(length(shiftamt)) shifts given for a FieldDimArray with $N dims"))
+    circshift!(parent(dest), parent(src), (Base.fill_to_length(shiftamt, 0, Val(N))..., map(zero, _fielddims(dest))...))
+    return dest
+end
+
+Base.circshift!(dest::FieldDimArray, src::FieldDimArray, ::Tuple{}) = (copyto!(parent(dest), parent(src)); dest)
+
 Base.dataids(a::FieldDimArray) = Base.dataids(parent(a))
 Base.unaliascopy(a::FieldDimArray{T, N}) where {T, N} = FieldDimArray{T, N}(Base.unaliascopy(parent(a)))
 

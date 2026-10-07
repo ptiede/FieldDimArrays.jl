@@ -36,3 +36,8 @@ m .* m .* adjoint.(m)              # FieldDimArray over a new 100×2×2 array
 Broadcasts on the CPU make one pass over the elements. Broadcasts over traced Reactant arrays
 run one broadcast per component over the component slabs and join the results with `cat`, so
 the compiled program contains no loop over elements and keeps sharded dims split.
+
+With AbstractFFTs loaded, `fft`, `bfft`, `ifft`, their in-place forms and their plans transform
+the dense parent over the element dims, so every component is transformed in one call; the
+region may only name element dims. `circshift!`, and with it `fftshift` and `ifftshift`, shift
+the element dims of the parent.
